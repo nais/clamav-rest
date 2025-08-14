@@ -1,4 +1,4 @@
-name: Build and deploy clamav
+name: Build and deploy clamav-rest
 on:
   push:
     paths-ignore:
