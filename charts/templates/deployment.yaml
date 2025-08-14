@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clamav-rest.fullname" . }}
+  labels:
+    {{- include "clamav-rest.labels" . | nindent 4 }}
+spec:
+  replicas: 2
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "clamav-rest.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "clamav-rest.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          env:
+          - name: DAEMON_ENDPOINT
+            value: clamav-daemon:3310
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 8080
+              scheme: HTTP
+          readinessProbe:
+            httpGet:
+              path: /liveness
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 20
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 50m
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}

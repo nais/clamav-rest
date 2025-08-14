@@ -1,0 +1,8 @@
+apiVersion: v2
+name: clamav-rest
+sources:
+  - https://github.com/nais/clamav-rest/tree/main/charts
+description: REST frontend for clamd anti-virus
+type: application
+appVersion: "1.0.0"
+version: 1.0.0

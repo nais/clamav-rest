@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "clamav-rest.fullname" . }}
+  labels:
+    {{- include "clamav-rest.labels" . | nindent 4 }}
+spec:
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clamav
+  ingress:
+    - from:
+        - namespaceSelector: {}
+          podSelector: {}
+  podSelector:
+    matchLabels:
+      {{- include "clamav-rest.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Egress
+    - Ingress
