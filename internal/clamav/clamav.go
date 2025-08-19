@@ -43,10 +43,10 @@ func NewClamClient(endpoint string, timeout, keepalive time.Duration) *ClamClien
 }
 
 func (c *ClamClient) Ping(ctx context.Context) ([]byte, error) {
-	metrics.RequestCount.WithLabelValues("ping").Inc()
+	metrics.RequestCount.WithLabelValues("GET", "/ping").Inc()
 	conn, err := c.connect(ctx)
 	if err != nil {
-		metrics.RequestErrors.WithLabelValues("ping").Inc()
+		metrics.RequestErrors.WithLabelValues("GET", "/ping").Inc()
 		return nil, fmt.Errorf("failed connecting to %s: %w", c.address, err)
 	}
 
@@ -63,10 +63,10 @@ func (c *ClamClient) Ping(ctx context.Context) ([]byte, error) {
 }
 
 func (c *ClamClient) Version(ctx context.Context) ([]byte, error) {
-	metrics.RequestCount.WithLabelValues("version").Inc()
+	metrics.RequestCount.WithLabelValues("GET", "version").Inc()
 	conn, err := c.connect(ctx)
 	if err != nil {
-		metrics.RequestErrors.WithLabelValues("version").Inc()
+		metrics.RequestErrors.WithLabelValues("GET", "/version").Inc()
 		return nil, fmt.Errorf("failed connecting to %s: %w", c.address, err)
 	}
 
@@ -83,10 +83,10 @@ func (c *ClamClient) Version(ctx context.Context) ([]byte, error) {
 }
 
 func (c *ClamClient) InStream(ctx context.Context, r io.Reader, size int64) ([]byte, error) {
-	metrics.RequestCount.WithLabelValues("scan").Inc()
+	metrics.RequestCount.WithLabelValues("GET", "/scan").Inc()
 	conn, err := c.connect(ctx)
 	if err != nil {
-		metrics.RequestErrors.WithLabelValues("scan").Inc()
+		metrics.RequestErrors.WithLabelValues("POST", "/scan").Inc()
 		return nil, fmt.Errorf("failed dialing %s/%s: %w", c.network, c.address, err)
 	}
 
