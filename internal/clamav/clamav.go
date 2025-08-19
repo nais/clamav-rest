@@ -3,6 +3,7 @@ package clamav
 import (
 	"bufio"
 	"bytes"
+	"clamav-rest/internal/metrics"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -42,8 +43,10 @@ func NewClamClient(endpoint string, timeout, keepalive time.Duration) *ClamClien
 }
 
 func (c *ClamClient) Ping(ctx context.Context) ([]byte, error) {
+	metrics.RequestCount.WithLabelValues("ping").Inc()
 	conn, err := c.connect(ctx)
 	if err != nil {
+		metrics.RequestErrors.WithLabelValues("ping").Inc()
 		return nil, fmt.Errorf("failed connecting to %s: %w", c.address, err)
 	}
 
@@ -60,8 +63,10 @@ func (c *ClamClient) Ping(ctx context.Context) ([]byte, error) {
 }
 
 func (c *ClamClient) Version(ctx context.Context) ([]byte, error) {
+	metrics.RequestCount.WithLabelValues("version").Inc()
 	conn, err := c.connect(ctx)
 	if err != nil {
+		metrics.RequestErrors.WithLabelValues("version").Inc()
 		return nil, fmt.Errorf("failed connecting to %s: %w", c.address, err)
 	}
 
@@ -78,8 +83,10 @@ func (c *ClamClient) Version(ctx context.Context) ([]byte, error) {
 }
 
 func (c *ClamClient) InStream(ctx context.Context, r io.Reader, size int64) ([]byte, error) {
+	metrics.RequestCount.WithLabelValues("scan").Inc()
 	conn, err := c.connect(ctx)
 	if err != nil {
+		metrics.RequestErrors.WithLabelValues("scan").Inc()
 		return nil, fmt.Errorf("failed dialing %s/%s: %w", c.network, c.address, err)
 	}
 

@@ -1,0 +1,7 @@
+.idea/
+clamav-rest.iml
+clamav-rest
+cmd/clamav-rest/clamav-rest
+vendor/
+/bin/
+.direnv%

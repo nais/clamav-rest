@@ -1,6 +1,7 @@
 package main
 
 import (
+	"clamav-rest/internal/metrics"
 	"context"
 	"errors"
 	"net"
@@ -27,6 +28,8 @@ func main() {
 	log.Info().Msg("starting clamav-rest service")
 
 	ctx := context.Background()
+
+	metrics.Init()
 
 	clamClient := clamav.NewClamClient(cfg.DaemonEndpoint, cfg.Timeout, cfg.Keepalive)
 	if _, err := clamClient.Ping(ctx); err != nil {

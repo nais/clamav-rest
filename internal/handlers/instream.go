@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"clamav-rest/internal/metrics"
 	"encoding/json"
 	"net/http"
 	"strings"
 
 	"clamav-rest/internal/clamav"
+
 	"github.com/rs/zerolog/log"
 )
 
@@ -55,6 +57,7 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 				Result:    clamav.ResVirusFound,
 			}
 			log.Error().Msgf("virus %s found in file: %s", streamResp.Signature, streamResp.FileName)
+			metrics.VirusesDiscovered.Inc()
 		} else {
 			streamResp = StreamResp{
 				FileName:  hd.Filename,
