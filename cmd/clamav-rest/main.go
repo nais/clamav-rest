@@ -47,6 +47,8 @@ func main() {
 	r.Get("/version", h.Version)
 	r.Get("/ping", h.Ping)
 	r.Handle("/metrics", promhttp.Handler())
+	r.Get("/liveness", h.Liveness)
+	r.Get("/readiness", h.Readiness)
 	r.Post("/scan", h.InStream(cfg.ServerMaxRequestSize))
 
 	sContext, sCancel := context.WithCancel(ctx)
