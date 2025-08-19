@@ -17,12 +17,12 @@ func (h *Handler) Liveness(w http.ResponseWriter, request *http.Request) {
 		http.Error(w, "failed to encode response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	log.Debug().Msg("Liveness check successful")
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 	_, err := h.Clamav.Ping(ctx)
@@ -37,5 +37,4 @@ func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debug().Msg("Readiness check successful")
-	w.WriteHeader(http.StatusOK)
 }
