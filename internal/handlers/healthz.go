@@ -9,20 +9,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (h *Handler) Liveness(w http.ResponseWriter, request *http.Request) {
+func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-
-	response := map[string]string{"status": "alive"}
-	if err := json.NewEncoder(w).Encode(response); err != nil {
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		http.Error(w, "failed to encode response: "+err.Error(), http.StatusInternalServerError)
-		return
 	}
+}
+
+func (h *Handler) Liveness(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "alive"})
 	log.Debug().Msg("Liveness check successful")
 }
 
 func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 	_, err := h.Clamav.Ping(ctx)
@@ -31,10 +31,6 @@ func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]string{"status": "ready"}
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "failed to encode response: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	log.Debug().Msg("Readiness check successful")
 }
