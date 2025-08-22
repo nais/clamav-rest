@@ -68,7 +68,7 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 			log.Debug().Msgf("no virus found in file: %s", streamResp.FileName)
 		}
 
-		resp, err := json.Marshal(streamResp)
+		resp, err := json.Marshal([]StreamResp{streamResp})
 		if err != nil {
 			http.Error(w, "failed to marshal response: "+err.Error(), http.StatusInternalServerError)
 			return
