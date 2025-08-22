@@ -1,7 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "clamav-rest.fullname" . }}
+{{- if .Values.replaceLegacyService }}
+  # use the old name of rest api to avoid changes in team applications
+  name: clamav 
+{{- else }}
+  name: {{ include "clamav-rest.fullname" . | nindent 4 }}
+{{- end }}
   labels:
     {{- include "clamav-rest.labels" . | nindent 4 }}
 spec:

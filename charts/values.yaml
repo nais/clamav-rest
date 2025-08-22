@@ -3,7 +3,6 @@ image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images/clamav-rest 
   pullPolicy: IfNotPresent
 maxFileSize: 400
-enabled: false
 
 containerSecurityContext:
   capabilities:
@@ -20,3 +19,5 @@ podSecurityContext:
   runAsNonRoot: true
   seccompProfile:
     type: RuntimeDefault
+
+replaceLegacyService: false

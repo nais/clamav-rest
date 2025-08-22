@@ -2,14 +2,14 @@ environmentKinds:
   - tenant
   - onprem
 values:
-  enabled: 
-    displayName: Activate new rest API
-    description: Use the new REST API for clamd (depends on turning off the old one in feature clamav)
-    config:
-      type: bool
   maxFileSize:
     displayName: Max file size allowed
     description: Max file size allowed for scanning (should be the same value as in clamd.conf)
     config:
       type: string
+  replaceLegacyService:
+    displayName: Use the original service name
+    description: Temporary switch to ease migration to new rest api, set this to enable the new api
+    config:
+      type: bool
     
