@@ -1,12 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  {{- if .Values.replaceLegacyService }}
-  # use the old name of rest api to avoid changes in team applications
-  name: clamav
-  {{- else }}
   name: {{ include "clamav-rest.fullname" . }}
-  {{- end }}
   labels:
     {{- include "clamav-rest.labels" . | nindent 4 }}
 spec:
@@ -22,6 +17,7 @@ spec:
   template:
     metadata:
       labels:
+        app: clamav
         {{- include "clamav-rest.selectorLabels" . | nindent 8 }}
       annotations:
         prometheus.io/scrape: "true"

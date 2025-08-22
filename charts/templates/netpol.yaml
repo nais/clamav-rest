@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   name: {{ include "clamav-rest.fullname" . }}
   labels:
+    app: clamav
     {{- include "clamav-rest.labels" . | nindent 4 }}
 spec:
   egress:

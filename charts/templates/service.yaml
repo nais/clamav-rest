@@ -8,6 +8,7 @@ metadata:
   name: {{ include "clamav-rest.fullname" . | nindent 4 }}
 {{- end }}
   labels:
+    app: clamav
     {{- include "clamav-rest.labels" . | nindent 4 }}
 spec:
   ports:
