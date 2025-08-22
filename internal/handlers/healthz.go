@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
@@ -19,7 +17,6 @@ func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
 
 func (h *Handler) Liveness(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "alive"})
-	log.Debug().Msg("Liveness check successful")
 }
 
 func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
@@ -32,5 +29,4 @@ func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
-	log.Debug().Msg("Readiness check successful")
 }
