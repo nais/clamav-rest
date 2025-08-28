@@ -12,10 +12,10 @@ import (
 )
 
 type StreamResp struct {
-	FileName  string `json:"Filename"`
-	Message   string `json:"Message"`
-	Signature string `json:"Signature"`
-	Result    string `json:"Result"`
+	Filename string `json:"Filename"`
+	//Message   string `json:"Message"`
+	//Signature string `json:"Signature"`
+	Result string `json:"Result"`
 }
 
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
@@ -51,21 +51,21 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 
 		if h.virusFound(string(inStream)) {
 			streamResp = StreamResp{
-				FileName:  hd.Filename,
-				Message:   clamav.MsgVirusFound,
-				Signature: h.parseSignature(string(inStream)),
-				Result:    clamav.ResVirusFound,
+				Filename: hd.Filename,
+				//Message:   clamav.MsgVirusFound,
+				//Signature: h.parseSignature(string(inStream)),
+				Result: clamav.ResVirusFound,
 			}
-			log.Error().Msgf("virus %s found in file: %s", streamResp.Signature, streamResp.FileName)
+			log.Error().Msgf("virus %s found in file: %s", h.parseSignature(string(inStream)), streamResp.Filename)
 			metrics.VirusesDiscovered.Inc()
 		} else {
 			streamResp = StreamResp{
-				FileName:  hd.Filename,
-				Message:   clamav.MsgVirusNotFound,
-				Signature: "",
-				Result:    clamav.ResVirusNotFound,
+				Filename: hd.Filename,
+				//Message:   clamav.MsgVirusNotFound,
+				//Signature: "",
+				Result: clamav.ResVirusNotFound,
 			}
-			log.Debug().Msgf("no virus found in file: %s", streamResp.FileName)
+			log.Debug().Msgf("no virus found in file: %s", streamResp.Filename)
 		}
 
 		resp, err := json.Marshal([]StreamResp{streamResp})
