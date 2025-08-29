@@ -83,7 +83,7 @@ func (c *ClamClient) Version(ctx context.Context) ([]byte, error) {
 }
 
 func (c *ClamClient) InStream(ctx context.Context, r io.Reader, size int64) ([]byte, error) {
-	metrics.RequestCount.WithLabelValues("GET", "/scan").Inc()
+	metrics.RequestCount.WithLabelValues("POST", "/scan").Inc()
 	conn, err := c.connect(ctx)
 	if err != nil {
 		metrics.RequestErrors.WithLabelValues("POST", "/scan").Inc()
