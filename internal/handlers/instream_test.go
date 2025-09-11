@@ -39,7 +39,7 @@ func TestInStreamHandler(t *testing.T) {
 		{
 			name:           "file size exceeds limit",
 			expectedBody:   "file size exceeds limit",
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusRequestEntityTooLarge,
 			fileContent:    make([]byte, maxRequestSize+1),
 			fileName:       "test.txt",
 			mockError:      nil,

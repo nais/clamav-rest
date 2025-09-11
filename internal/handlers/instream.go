@@ -1,69 +1,58 @@
 package handlers
 
 import (
+	"bytes"
+	"clamav-rest/internal/clamav"
 	"clamav-rest/internal/metrics"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strings"
-
-	"clamav-rest/internal/clamav"
 
 	"github.com/rs/zerolog/log"
 )
 
-type StreamResp struct {
-	Filename string `json:"Filename"`
-	//Message   string `json:"Message"`
-	//Signature string `json:"Signature"`
-	Result string `json:"Result"`
-}
-
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		var ctx = r.Context()
-		var streamResp StreamResp
+		var streamResp = StreamResp{}
 
-		_, hd, err := r.FormFile("file")
+		buf, filename, err := readUpload(r, maxFileSize)
 		if err != nil {
-			http.Error(w, "failed to parse form file: "+err.Error(), http.StatusBadRequest)
+			metrics.RequestErrors.WithLabelValues("PATH", "/scan").Inc()
+			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		f, err := hd.Open()
-		if err != nil {
-			http.Error(w, "failed to open file: "+err.Error(), http.StatusInternalServerError)
+		if int64(len(buf)) > maxFileSize {
+			http.Error(w, "file size exceeds limit", http.StatusRequestEntityTooLarge)
 			return
 		}
 
-		if hd.Size > maxFileSize {
-			http.Error(w, "file size exceeds limit", http.StatusBadRequest)
-			return
-		}
-
-		defer f.Close()
-
-		inStream, err := h.Clamav.InStream(ctx, f, hd.Size)
+		part := io.NopCloser(bytes.NewBuffer(buf))
+		inStream, err := h.Clamav.InStream(ctx, part, int64(len(buf)))
 		if err != nil {
+			metrics.RequestErrors.WithLabelValues("PATH", "/scan").Inc()
 			http.Error(w, "failed to scan file: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if h.virusFound(string(inStream)) {
+		if virusFound(string(inStream)) {
 			streamResp = StreamResp{
-				Filename: hd.Filename,
-				//Message:   clamav.MsgVirusFound,
-				//Signature: h.parseSignature(string(inStream)),
-				Result: clamav.ResVirusFound,
+				Filename:  filename,
+				Message:   clamav.MsgVirusFound,
+				Signature: parseSignature(string(inStream)),
+				Result:    clamav.ResVirusFound,
 			}
-			log.Error().Msgf("virus %s found in file: %s", h.parseSignature(string(inStream)), streamResp.Filename)
+			log.Error().Msgf("virus %s found in file: %s", parseSignature(string(inStream)), streamResp.Filename)
 			metrics.VirusesDiscovered.Inc()
 		} else {
 			streamResp = StreamResp{
-				Filename: hd.Filename,
-				//Message:   clamav.MsgVirusNotFound,
-				//Signature: "",
-				Result: clamav.ResVirusNotFound,
+				Filename:  filename,
+				Message:   clamav.MsgVirusNotFound,
+				Signature: "",
+				Result:    clamav.ResVirusNotFound,
 			}
 			log.Debug().Msgf("no virus found in file: %s", streamResp.Filename)
 		}
@@ -83,10 +72,45 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 	}
 }
 
-func (h *Handler) parseSignature(msg string) string {
+func parseSignature(msg string) string {
 	return strings.TrimLeft(strings.TrimRight(msg, " FOUND\n"), "stream: ")
 }
 
-func (h *Handler) virusFound(msg string) bool {
+func readUpload(r *http.Request, maxFileSize int64) ([]byte, string, error) {
+	var buf []byte
+	var err error
+	var filename string
+
+	switch {
+	case r.Method == http.MethodPut:
+		buf, err = io.ReadAll(r.Body)
+		if err != nil {
+			return nil, "", err
+		}
+		defer r.Body.Close()
+		filename = "request body"
+	case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
+		if err := r.ParseMultipartForm(maxFileSize); err != nil {
+			return nil, "", err
+		}
+
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			return nil, "", err
+		}
+		defer file.Close()
+		filename = header.Filename
+		buf, err = io.ReadAll(file)
+		if err != nil {
+			return nil, "", err
+		}
+	default:
+		return nil, "", errors.New("invalid method or content type")
+	}
+
+	return buf, filename, nil
+}
+
+func virusFound(msg string) bool {
 	return strings.HasSuffix(msg, "FOUND\n")
 }
