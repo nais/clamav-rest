@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -20,7 +21,7 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 
 		buf, filename, err := readUpload(r, maxFileSize)
 		if err != nil {
-			metrics.RequestErrors.WithLabelValues("PATH", "/scan").Inc()
+			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
 			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -31,12 +32,17 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		}
 
 		part := io.NopCloser(bytes.NewBuffer(buf))
+		start := time.Now()
 		inStream, err := h.Clamav.InStream(ctx, part, int64(len(buf)))
+		scanDuration := time.Since(start).Seconds()
 		if err != nil {
-			metrics.RequestErrors.WithLabelValues("PATH", "/scan").Inc()
+			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
 			http.Error(w, "failed to scan file: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		metrics.RequestCount.WithLabelValues(r.Method, "/scan").Inc()
+		metrics.ScanDuration.WithLabelValues(r.Method, "/scan").Observe(scanDuration)
 
 		if virusFound(string(inStream)) {
 			streamResp = StreamResp{

@@ -23,6 +23,14 @@ var (
 		},
 		[]string{"method", "endpoint"},
 	)
+	ScanDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "clamav_scan_duration_seconds",
+			Help:    "Duration of ClamAV scan requests",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "endpoint"},
+	)
 )
 
 func Init() {
