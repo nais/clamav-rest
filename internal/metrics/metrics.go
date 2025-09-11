@@ -3,12 +3,6 @@ package metrics
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
-	VirusesDiscovered = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "clamav_viruses_discovered_total",
-			Help: "Total number of viruses discovered by ClamAV scans",
-		},
-	)
 	RequestCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "clamav_requests_total",
@@ -31,8 +25,14 @@ var (
 		},
 		[]string{"method", "endpoint"},
 	)
+	VirusesDiscovered = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "clamav_viruses_discovered_total",
+			Help: "Total number of viruses discovered by ClamAV scans",
+		},
+	)
 )
 
 func Init() {
-	prometheus.MustRegister(RequestErrors, RequestCount, VirusesDiscovered)
+	prometheus.MustRegister(RequestErrors, RequestCount, ScanDuration, VirusesDiscovered)
 }

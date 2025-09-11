@@ -39,7 +39,6 @@ func NewClamClient(endpoint string, timeout, keepalive time.Duration) *ClamClien
 		network: "tcp",
 		conn:    nil,
 	}
-
 }
 
 func (c *ClamClient) Ping(ctx context.Context) ([]byte, error) {
