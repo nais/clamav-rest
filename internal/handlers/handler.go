@@ -11,10 +11,10 @@ type Handler struct {
 }
 
 type StreamResp struct {
-	Filename  string `json:"Filename"`
-	Message   string `json:"Message"`
-	Signature string `json:"Signature"`
-	Result    string `json:"Result"`
+	Filename string `json:"Filename"`
+	//Message   string `json:"Message"`
+	//Signature string `json:"Signature"`
+	Result string `json:"Result"`
 }
 
 func NewHandler(logger *zerolog.Logger, clamav clamav.Clamav) *Handler {

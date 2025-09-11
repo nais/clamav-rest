@@ -40,19 +40,19 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 
 		if virusFound(string(inStream)) {
 			streamResp = StreamResp{
-				Filename:  filename,
-				Message:   clamav.MsgVirusFound,
-				Signature: parseSignature(string(inStream)),
-				Result:    clamav.ResVirusFound,
+				Filename: filename,
+				//Message:   clamav.MsgVirusFound,
+				//Signature: parseSignature(string(inStream)),
+				Result: clamav.ResVirusFound,
 			}
 			log.Error().Msgf("virus %s found in file: %s", parseSignature(string(inStream)), streamResp.Filename)
 			metrics.VirusesDiscovered.Inc()
 		} else {
 			streamResp = StreamResp{
-				Filename:  filename,
-				Message:   clamav.MsgVirusNotFound,
-				Signature: "",
-				Result:    clamav.ResVirusNotFound,
+				Filename: filename,
+				//Message:   clamav.MsgVirusNotFound,
+				//Signature: "",
+				Result: clamav.ResVirusNotFound,
 			}
 			log.Debug().Msgf("no virus found in file: %s", streamResp.Filename)
 		}
