@@ -5,7 +5,6 @@ import (
 	"clamav-rest/internal/clamav"
 	"clamav-rest/internal/metrics"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -16,51 +15,67 @@ import (
 
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var ctx = r.Context()
-		var streamResp = StreamResp{}
+		var (
+			ctx        = r.Context()
+			streamResp = StreamResp{}
+			err        error
+			files      map[string][]byte
+			inStream   []byte
+		)
 
-		buf, filename, err := readUpload(r, maxFileSize)
-		if err != nil {
-			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
+		if r.Method == http.MethodPut && r.Header.Get("Content-Type") == "application/octet-stream" {
+			files, err = readRequestBody(r)
+			if err != nil {
+				metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
+				http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+		} else if r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+			files, err = readMultipartForm(r, maxFileSize)
+			if err != nil {
+				metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
+				http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+		} else {
+			http.Error(w, "unsupported method or content type", http.StatusBadRequest)
 			return
 		}
 
-		if int64(len(buf)) > maxFileSize {
+		if !isSizeWithinLimit(files, maxFileSize) {
+			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
 			http.Error(w, "file size exceeds limit", http.StatusRequestEntityTooLarge)
 			return
 		}
 
-		part := io.NopCloser(bytes.NewBuffer(buf))
-		start := time.Now()
-		inStream, err := h.Clamav.InStream(ctx, part, int64(len(buf)))
-		scanDuration := time.Since(start).Seconds()
-		if err != nil {
-			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-			http.Error(w, "failed to scan file: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		metrics.RequestCount.WithLabelValues(r.Method, "/scan").Inc()
-		metrics.ScanDuration.WithLabelValues(r.Method, "/scan").Observe(scanDuration)
-
-		if virusFound(string(inStream)) {
-			streamResp = StreamResp{
-				Filename: filename,
-				//Message:   clamav.MsgVirusFound,
-				//Signature: parseSignature(string(inStream)),
-				Result: clamav.ResVirusFound,
+		for filename, buf := range files {
+			part := io.NopCloser(bytes.NewBuffer(buf))
+			start := time.Now()
+			inStream, err = h.Clamav.InStream(ctx, part, int64(len(buf)))
+			if err != nil {
+				metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
+				http.Error(w, "failed to scan file: "+err.Error(), http.StatusInternalServerError)
+				return
 			}
-			log.Error().Msgf("virus %s found in file: %s", parseSignature(string(inStream)), streamResp.Filename)
-			metrics.VirusesDiscovered.Inc()
-		} else {
-			streamResp = StreamResp{
-				Filename: filename,
-				//Message:   clamav.MsgVirusNotFound,
-				//Signature: "",
-				Result: clamav.ResVirusNotFound,
+
+			scanDuration := time.Since(start).Seconds()
+			metrics.RequestCount.WithLabelValues(r.Method, "/scan").Inc()
+			metrics.ScanDuration.WithLabelValues(r.Method, "/scan").Observe(scanDuration)
+
+			if virusFound(string(inStream)) {
+				streamResp = StreamResp{
+					Filename: filename,
+					Result:   clamav.ResVirusFound,
+				}
+				log.Error().Msgf("virus %s found in file: %s", parseSignature(string(inStream)), streamResp.Filename)
+				metrics.VirusesDiscovered.Inc()
+			} else {
+				streamResp = StreamResp{
+					Filename: filename,
+					Result:   clamav.ResVirusNotFound,
+				}
+				log.Debug().Msgf("no virus found in file: %s", streamResp.Filename)
 			}
-			log.Debug().Msgf("no virus found in file: %s", streamResp.Filename)
 		}
 
 		resp, err := json.Marshal([]StreamResp{streamResp})
@@ -82,41 +97,58 @@ func parseSignature(msg string) string {
 	return strings.TrimLeft(strings.TrimRight(msg, " FOUND\n"), "stream: ")
 }
 
-func readUpload(r *http.Request, maxFileSize int64) ([]byte, string, error) {
-	var buf []byte
-	var err error
-	var filename string
-
-	switch {
-	case r.Method == http.MethodPut:
-		buf, err = io.ReadAll(r.Body)
-		if err != nil {
-			return nil, "", err
-		}
-		defer r.Body.Close()
-		filename = "request body"
-	case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
-		if err := r.ParseMultipartForm(maxFileSize); err != nil {
-			return nil, "", err
-		}
-
-		file, header, err := r.FormFile("file")
-		if err != nil {
-			return nil, "", err
-		}
-		defer file.Close()
-		filename = header.Filename
-		buf, err = io.ReadAll(file)
-		if err != nil {
-			return nil, "", err
-		}
-	default:
-		return nil, "", errors.New("invalid method or content type")
+func readRequestBody(r *http.Request) (map[string][]byte, error) {
+	requestMap := make(map[string][]byte)
+	buf, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	return buf, filename, nil
+	requestMap["request body"] = buf
+	defer r.Body.Close()
+
+	return requestMap, nil
+}
+
+func readMultipartForm(r *http.Request, maxFileSize int64) (map[string][]byte, error) {
+	if err := r.ParseMultipartForm(maxFileSize); err != nil {
+		return nil, err
+	}
+
+	files := make(map[string][]byte)
+	for key := range r.MultipartForm.File {
+		for _, header := range r.MultipartForm.File[key] {
+			file, err := header.Open()
+			if err != nil {
+				return nil, err
+			}
+
+			defer file.Close()
+
+			buf, err := io.ReadAll(file)
+			if err != nil {
+				return nil, err
+			}
+
+			if header.Filename == "" {
+				header.Filename = "request body"
+			}
+
+			files[header.Filename] = buf
+		}
+	}
+	return files, nil
 }
 
 func virusFound(msg string) bool {
 	return strings.HasSuffix(msg, "FOUND\n")
+}
+
+func isSizeWithinLimit(files map[string][]byte, maxFileSize int64) bool {
+	for _, buf := range files {
+		if int64(len(buf)) > maxFileSize {
+			return false
+		}
+	}
+	return true
 }
