@@ -33,11 +33,13 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
 			files, err = readMultipartForm(r, maxFileSize)
 		default:
+			log.Error().Msgf("Unsupported content-type: %s", r.Header.Get("Content-Type"))
 			http.Error(w, "unsupported method or content type", http.StatusBadRequest)
 			return
 		}
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
+			log.Error().Msgf("Error reading request body: %v", err)
 			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
