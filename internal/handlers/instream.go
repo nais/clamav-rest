@@ -16,9 +16,8 @@ import (
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			streamResp = StreamResp{}
-			err        error
-			files      map[string][]byte
+			err   error
+			files map[string][]byte
 		)
 
 		switch {
@@ -43,6 +42,7 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 			return
 		}
 
+		var responses []StreamResp
 		for filename, buf := range files {
 			part := io.NopCloser(bytes.NewBuffer(buf))
 			start := time.Now()
@@ -57,7 +57,7 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 			metrics.RequestCount.WithLabelValues(r.Method, "/scan").Inc()
 			metrics.ScanDuration.WithLabelValues(r.Method, "/scan").Observe(scanDuration)
 
-			streamResp = StreamResp{
+			streamResp := StreamResp{
 				Filename: filename,
 				Result:   clamav.ResVirusNotFound,
 			}
@@ -68,9 +68,10 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 			} else {
 				log.Debug().Msgf("no virus found in file: %s", streamResp.Filename)
 			}
+			responses = append(responses, streamResp)
 		}
 
-		resp, err := json.Marshal([]StreamResp{streamResp})
+		resp, err := json.Marshal(responses)
 		if err != nil {
 			http.Error(w, "failed to marshal response: "+err.Error(), http.StatusInternalServerError)
 			return
