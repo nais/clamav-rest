@@ -13,6 +13,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var allowedPutContentTypes = []string{
+	"application/octet-stream",
+	"text/plain",
+}
+
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
@@ -23,7 +28,7 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 			inStream   []byte
 		)
 
-		if r.Method == http.MethodPut && r.Header.Get("Content-Type") == "application/octet-stream" {
+		if r.Method == http.MethodPut && isAllowedContentType(r.Header.Get("Content-Type")) {
 			files, err = readRequestBody(r)
 			if err != nil {
 				metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
@@ -151,4 +156,13 @@ func isSizeWithinLimit(files map[string][]byte, maxFileSize int64) bool {
 		}
 	}
 	return true
+}
+
+func isAllowedContentType(contentType string) bool {
+	for _, allowedType := range allowedPutContentTypes {
+		if contentType == allowedType {
+			return true
+		}
+	}
+	return false
 }
