@@ -13,12 +13,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var allowedPutContentTypes = []string{
-	"application/octet-stream",
-	"text/plain",
-	"text/event-stream",
-}
-
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
@@ -28,12 +22,11 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		)
 
 		switch {
-		case r.Method == http.MethodPut && isAllowedContentType(r.Header.Get("Content-Type")):
+		case r.Method == http.MethodPut:
 			files, err = readRequestBody(r)
 		case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
 			files, err = readMultipartForm(r, maxFileSize)
 		default:
-			log.Error().Msgf("Unsupported content-type: %s", r.Header.Get("Content-Type"))
 			http.Error(w, "unsupported method or content type", http.StatusBadRequest)
 			return
 		}
@@ -150,13 +143,4 @@ func isSizeWithinLimit(files map[string][]byte, maxFileSize int64) bool {
 		}
 	}
 	return true
-}
-
-func isAllowedContentType(contentType string) bool {
-	for _, allowedType := range allowedPutContentTypes {
-		if contentType == allowedType {
-			return true
-		}
-	}
-	return false
 }
