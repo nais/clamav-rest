@@ -16,34 +16,29 @@ import (
 var allowedPutContentTypes = []string{
 	"application/octet-stream",
 	"text/plain",
+	"text/event-stream",
 }
 
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			ctx        = r.Context()
 			streamResp = StreamResp{}
 			err        error
 			files      map[string][]byte
-			inStream   []byte
 		)
 
-		if r.Method == http.MethodPut && isAllowedContentType(r.Header.Get("Content-Type")) {
+		switch {
+		case r.Method == http.MethodPut && isAllowedContentType(r.Header.Get("Content-Type")):
 			files, err = readRequestBody(r)
-			if err != nil {
-				metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-				http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
-				return
-			}
-		} else if r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
 			files, err = readMultipartForm(r, maxFileSize)
-			if err != nil {
-				metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-				http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
-				return
-			}
-		} else {
+		default:
 			http.Error(w, "unsupported method or content type", http.StatusBadRequest)
+			return
+		}
+		if err != nil {
+			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
+			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -56,7 +51,7 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		for filename, buf := range files {
 			part := io.NopCloser(bytes.NewBuffer(buf))
 			start := time.Now()
-			inStream, err = h.Clamav.InStream(ctx, part, int64(len(buf)))
+			inStream, err := h.Clamav.InStream(r.Context(), part, int64(len(buf)))
 			if err != nil {
 				metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
 				http.Error(w, "failed to scan file: "+err.Error(), http.StatusInternalServerError)
@@ -67,18 +62,15 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 			metrics.RequestCount.WithLabelValues(r.Method, "/scan").Inc()
 			metrics.ScanDuration.WithLabelValues(r.Method, "/scan").Observe(scanDuration)
 
+			streamResp = StreamResp{
+				Filename: filename,
+				Result:   clamav.ResVirusNotFound,
+			}
 			if virusFound(string(inStream)) {
-				streamResp = StreamResp{
-					Filename: filename,
-					Result:   clamav.ResVirusFound,
-				}
+				streamResp.Result = clamav.ResVirusFound
 				log.Error().Msgf("virus %s found in file: %s", parseSignature(string(inStream)), streamResp.Filename)
 				metrics.VirusesDiscovered.Inc()
 			} else {
-				streamResp = StreamResp{
-					Filename: filename,
-					Result:   clamav.ResVirusNotFound,
-				}
 				log.Debug().Msgf("no virus found in file: %s", streamResp.Filename)
 			}
 		}

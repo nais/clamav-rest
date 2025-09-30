@@ -6,7 +6,6 @@ import (
 	"clamav-rest/internal/metrics"
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -54,10 +53,6 @@ func (c *ClamClient) Ping(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("failed sending command to %s: %w", c.address, err)
 	}
 
-	err = c.parseResponse(resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed parsing response from %s: %w", c.address, err)
-	}
 	return resp, nil
 }
 
@@ -74,10 +69,6 @@ func (c *ClamClient) Version(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("failed sending command to %s: %w", c.address, err)
 	}
 
-	err = c.parseResponse(resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed parsing response from %s: %w", c.address, err)
-	}
 	return resp, nil
 }
 
@@ -121,10 +112,6 @@ func (c *ClamClient) InStream(ctx context.Context, r io.Reader, size int64) ([]b
 		return nil, err
 	}
 
-	if err := c.parseResponse(resp); err != nil {
-		return resp, err
-	}
-
 	return resp, nil
 }
 
@@ -166,20 +153,4 @@ func (c *ClamClient) readResponse(r io.Reader) ([]byte, error) {
 	}
 
 	return bytes.TrimSuffix(resp, []byte("\000")), nil
-}
-
-func (c *ClamClient) parseResponse(msg []byte) error {
-	if bytes.EqualFold(msg, []byte(ResErrScanLimit)) {
-		return fmt.Errorf("scan limit exceeded: %s", msg)
-	}
-
-	if bytes.HasPrefix(msg, []byte("stream: ")) && bytes.HasSuffix(msg, []byte("FOUND")) {
-		return errors.New("file contains potential virus")
-	}
-
-	if bytes.Equal(msg, []byte(ResErrUnknown)) {
-		return fmt.Errorf("unknown error occured: %s", msg)
-	}
-
-	return nil
 }
