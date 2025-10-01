@@ -12,7 +12,7 @@ var (
 	)
 	RequestErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "clamav_request_errors_total",
+			Name: "clamav_requests_errors_total",
 			Help: "Total number of request errors",
 		},
 		[]string{"method", "endpoint"},

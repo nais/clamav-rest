@@ -28,7 +28,6 @@ func main() {
 	log.Info().Msg("starting clamav-rest service")
 
 	ctx := context.Background()
-
 	metrics.Init()
 
 	clamClient := clamav.NewClamClient(cfg.DaemonEndpoint, cfg.Timeout, cfg.Keepalive)
@@ -36,9 +35,8 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to ping ClamAV daemon")
 	}
 
-	r := chi.NewMux()
 	h := handlers.NewHandler(log, clamClient)
-
+	r := chi.NewMux()
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte("This is the Clam AV service")); err != nil {
 			log.Error().Err(err).Msg("failed to write response")
@@ -48,9 +46,9 @@ func main() {
 	r.Get("/ping", h.Ping)
 	r.Get("/liveness", h.Liveness)
 	r.Get("/readiness", h.Readiness)
-	r.Handle("/metrics", promhttp.Handler())
 	r.Post("/scan", h.InStream(cfg.ServerMaxRequestSize))
 	r.Put("/scan", h.InStream(cfg.ServerMaxRequestSize))
+	r.Handle("/metrics", promhttp.Handler())
 
 	sContext, sCancel := context.WithCancel(ctx)
 	s := &http.Server{
