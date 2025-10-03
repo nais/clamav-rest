@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
@@ -26,13 +24,14 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
 			files, err = readMultipartForm(r, maxFileSize)
 		default:
-			log.Error().Msgf("Unsupported method %s or content type %s", r.Method, r.Header.Get("Content-Type"))
+			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
+			h.Logger.Error().Msgf("Unsupported method %s or content type %s", r.Method, r.Header.Get("Content-Type"))
 			http.Error(w, "unsupported method or content type", http.StatusBadRequest)
 			return
 		}
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-			log.Error().Msgf("Error reading request body: %v", err)
+			h.Logger.Error().Msgf("Error reading request body: %v", err)
 			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -64,23 +63,27 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 			}
 			if virusFound(string(inStream)) {
 				streamResp.Result = clamav.ResVirusFound
-				log.Error().Msgf("virus %s found in file: %s", parseSignature(string(inStream)), streamResp.Filename)
+				h.Logger.Info().Msgf("virus %s found in file: %s", parseSignature(string(inStream)), streamResp.Filename)
 				metrics.VirusesDiscovered.Inc()
 			} else {
-				log.Debug().Msgf("no virus found in file: %s", streamResp.Filename)
+				h.Logger.Debug().Msgf("no virus found in file: %s", streamResp.Filename)
 			}
 			responses = append(responses, streamResp)
 		}
 
 		resp, err := json.Marshal(responses)
 		if err != nil {
+			h.Logger.Error().Msgf("Error marshalling response: %v", err)
 			http.Error(w, "failed to marshal response: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
+		h.Logger.Info().Msgf("Response: %s", string(resp))
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(resp); err != nil {
+			h.Logger.Error().Msgf("Error writing response: %v", err)
 			http.Error(w, "failed to write response: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
