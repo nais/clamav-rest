@@ -50,7 +50,7 @@ func TestInStreamHandler(t *testing.T) {
 			expectedBody:   "OK",
 			expectedStatus: http.StatusOK,
 			fileContent:    []byte("test content"),
-			fileName:       "test.txt",
+			fileName:       "test 1.txt",
 			mockError:      nil,
 			mockResponse:   []byte("OK"),
 		},

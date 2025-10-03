@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
@@ -34,12 +32,6 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
 			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if len(files) == 0 {
-			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-			http.Error(w, "no files to upload", http.StatusBadRequest)
 			return
 		}
 
@@ -80,12 +72,9 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 
 		resp, err := json.Marshal(responses)
 		if err != nil {
-			h.Logger.Error().Msgf("Error marshalling response: %v", err)
 			http.Error(w, "failed to marshal response: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		h.Logger.Info().Msgf("Response: %s", string(resp))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -120,8 +109,6 @@ func readMultipartForm(r *http.Request, maxFileSize int64) (map[string][]byte, e
 	}
 
 	files := make(map[string][]byte)
-	log.Info().Msgf("Multipart form values: %v", r.MultipartForm.Value)
-	log.Info().Msgf("Multipart form files: %v", r.MultipartForm)
 	for key := range r.MultipartForm.File {
 		for _, header := range r.MultipartForm.File[key] {
 			file, err := header.Open()
