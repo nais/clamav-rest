@@ -33,7 +33,6 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		}
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-			h.Logger.Error().Msgf("Error reading request body: %v", err)
 			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -121,8 +120,9 @@ func readMultipartForm(r *http.Request, maxFileSize int64) (map[string][]byte, e
 	}
 
 	files := make(map[string][]byte)
+	log.Info().Msgf("Multipart form values: %v", r.MultipartForm.Value)
+	log.Info().Msgf("Multipart form files: %v", r.MultipartForm)
 	for key := range r.MultipartForm.File {
-		log.Info().Msgf("Uploading file %s", key)
 		for _, header := range r.MultipartForm.File[key] {
 			file, err := header.Open()
 			if err != nil {
@@ -135,8 +135,6 @@ func readMultipartForm(r *http.Request, maxFileSize int64) (map[string][]byte, e
 			if err != nil {
 				return nil, err
 			}
-
-			log.Info().Msgf("Uploaded file %s with size %d bytes", header.Filename, len(buf))
 
 			if header.Filename == "" {
 				header.Filename = "request body"
