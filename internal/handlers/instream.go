@@ -25,7 +25,6 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 			files, err = readMultipartForm(r, maxFileSize)
 		default:
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-			h.Logger.Error().Msgf("Unsupported method %s or content type %s", r.Method, r.Header.Get("Content-Type"))
 			http.Error(w, "unsupported method or content type", http.StatusBadRequest)
 			return
 		}
