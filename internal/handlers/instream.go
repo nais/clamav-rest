@@ -6,16 +6,9 @@ import (
 	"clamav-rest/internal/metrics"
 	"encoding/json"
 	"io"
-	"mime"
-	"mime/multipart"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
-	"unicode/utf8"
-
-	"github.com/rs/zerolog/log"
-	"golang.org/x/text/encoding/charmap"
 )
 
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
@@ -38,12 +31,6 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
 			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if files == nil {
-			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-			http.Error(w, "no files to scan", http.StatusBadRequest)
 			return
 		}
 
@@ -121,15 +108,8 @@ func readMultipartForm(r *http.Request, maxFileSize int64) (map[string][]byte, e
 	}
 
 	files := make(map[string][]byte)
-	if r.MultipartForm == nil || r.MultipartForm.File == nil {
-		log.Info().Msg("no files to scan")
-		return nil, nil
-	}
-
 	for key := range r.MultipartForm.File {
-		log.Info().Msgf("Reading key %s", key)
 		for _, header := range r.MultipartForm.File[key] {
-			log.Info().Msgf("Reading file %s", header.Filename)
 			file, err := header.Open()
 			if err != nil {
 				return nil, err
@@ -142,12 +122,11 @@ func readMultipartForm(r *http.Request, maxFileSize int64) (map[string][]byte, e
 				return nil, err
 			}
 
-			filename := decodeFilename(header)
-			if filename == "" {
-				filename = "request body"
+			if header.Filename == "" {
+				header.Filename = "request body"
 			}
 
-			files[filename] = buf
+			files[header.Filename] = buf
 		}
 	}
 	return files, nil
@@ -162,44 +141,6 @@ func isSizeWithinLimit(files map[string][]byte, maxFileSize int64) bool {
 		if int64(len(buf)) > maxFileSize {
 			return false
 		}
-	}
-	return true
-}
-
-func decodeFilename(header *multipart.FileHeader) string {
-	cd := header.Header.Get("Content-Disposition")
-	_, params, err := mime.ParseMediaType(cd)
-	if err == nil {
-		if fn, ok := params["filename*"]; ok {
-			if strings.HasPrefix(fn, "utf-8''") {
-				decoded, err := url.QueryUnescape(fn[7:])
-				if err == nil {
-					return decoded
-				}
-			}
-		}
-		if fn, ok := params["filename"]; ok {
-			// Try UTF-8 first
-			if isUTF8(fn) {
-				return fn
-			}
-			// Fallback: try ISO-8859-1
-			decoded, err := charmap.ISO8859_1.NewDecoder().String(fn)
-			if err == nil {
-				return decoded
-			}
-		}
-	}
-	return header.Filename
-}
-
-func isUTF8(s string) bool {
-	for i := 0; i < len(s); {
-		r, size := utf8.DecodeRuneInString(s[i:])
-		if r == utf8.RuneError && size == 1 {
-			return false
-		}
-		i += size
 	}
 	return true
 }
