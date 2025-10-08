@@ -6,7 +6,10 @@ import (
 	"clamav-rest/internal/metrics"
 	"encoding/json"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -122,11 +125,12 @@ func readMultipartForm(r *http.Request, maxFileSize int64) (map[string][]byte, e
 				return nil, err
 			}
 
-			if header.Filename == "" {
-				header.Filename = "request body"
+			filename := decodeFilename(header)
+			if filename == "" {
+				filename = "request body"
 			}
 
-			files[header.Filename] = buf
+			files[filename] = buf
 		}
 	}
 	return files, nil
@@ -143,4 +147,20 @@ func isSizeWithinLimit(files map[string][]byte, maxFileSize int64) bool {
 		}
 	}
 	return true
+}
+
+func decodeFilename(header *multipart.FileHeader) string {
+	cd := header.Header.Get("Content-Disposition")
+	_, params, err := mime.ParseMediaType(cd)
+	if err == nil {
+		if fn, ok := params["filename*"]; ok {
+			if strings.HasPrefix(fn, "utf-8''") {
+				decoded, err := url.QueryUnescape(fn[7:])
+				if err == nil {
+					return decoded
+				}
+			}
+		}
+	}
+	return header.Filename
 }
