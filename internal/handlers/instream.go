@@ -28,6 +28,12 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		case r.Method == http.MethodPut:
 			files, err = readRequestBody(r)
 		case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
+			for key := range r.MultipartForm.File {
+				h.Logger.Info().Msgf("multipart form file key: %s", key)
+				for _, header := range r.MultipartForm.File[key] {
+					h.Logger.Info().Msgf("multipart form file header: %+v", header)
+				}
+			}
 			files, err = readMultipartForm(r, maxFileSize)
 		default:
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
@@ -37,6 +43,12 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
 			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if files == nil {
+			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
+			http.Error(w, "no files to scan", http.StatusBadRequest)
 			return
 		}
 
