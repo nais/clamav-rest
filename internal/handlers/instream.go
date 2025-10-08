@@ -12,6 +12,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode/utf8"
+
+	"golang.org/x/text/encoding/charmap"
 )
 
 func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *http.Request) {
@@ -161,6 +164,28 @@ func decodeFilename(header *multipart.FileHeader) string {
 				}
 			}
 		}
+		if fn, ok := params["filename"]; ok {
+			// Try UTF-8 first
+			if isUTF8(fn) {
+				return fn
+			}
+			// Fallback: try ISO-8859-1
+			decoded, err := charmap.ISO8859_1.NewDecoder().String(fn)
+			if err == nil {
+				return decoded
+			}
+		}
 	}
 	return header.Filename
+}
+
+func isUTF8(s string) bool {
+	for i := 0; i < len(s); {
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			return false
+		}
+		i += size
+	}
+	return true
 }
