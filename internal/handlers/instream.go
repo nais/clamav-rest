@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/rs/zerolog/log"
 	"golang.org/x/text/encoding/charmap"
 )
 
@@ -28,12 +29,6 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		case r.Method == http.MethodPut:
 			files, err = readRequestBody(r)
 		case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
-			for key := range r.MultipartForm.File {
-				h.Logger.Info().Msgf("multipart form file key: %s", key)
-				for _, header := range r.MultipartForm.File[key] {
-					h.Logger.Info().Msgf("multipart form file header: %+v", header)
-				}
-			}
 			files, err = readMultipartForm(r, maxFileSize)
 		default:
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
@@ -126,8 +121,15 @@ func readMultipartForm(r *http.Request, maxFileSize int64) (map[string][]byte, e
 	}
 
 	files := make(map[string][]byte)
+	if r.MultipartForm == nil || r.MultipartForm.File == nil {
+		log.Info().Msg("no files to scan")
+		return nil, nil
+	}
+
 	for key := range r.MultipartForm.File {
+		log.Info().Msgf("Reading key %s", key)
 		for _, header := range r.MultipartForm.File[key] {
+			log.Info().Msgf("Reading file %s", header.Filename)
 			file, err := header.Open()
 			if err != nil {
 				return nil, err
