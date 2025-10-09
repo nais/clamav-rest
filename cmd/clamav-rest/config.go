@@ -23,7 +23,7 @@ func LoadConfig() (*Config, error) {
 	cfg := &Config{}
 
 	cfg.BindAddress = ":8080"
-	cfg.LogLevel = "debug"
+	cfg.LogLevel = "info"
 	cfg.Timeout = 3 * time.Second
 	cfg.Keepalive = 3 * time.Second
 	cfg.ServerReadTimeout = 30 * time.Second
