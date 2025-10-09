@@ -69,6 +69,11 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 			responses = append(responses, streamResp)
 		}
 
+		// Ensure we always return a JSON array, even if no files were processed
+		if responses == nil {
+			responses = []StreamResp{}
+		}
+
 		resp, err := json.Marshal(responses)
 		if err != nil {
 			http.Error(w, "failed to marshal response: "+err.Error(), http.StatusInternalServerError)
