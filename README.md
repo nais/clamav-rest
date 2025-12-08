@@ -26,7 +26,7 @@ curl -F "file=@yourfile.txt" http://localhost:8080/scan
 
 ### Prerequisites
 
-- Go 1.24 or later
+- Go 1.25 or later
 - ClamAV daemon installed and running
 - Make 
 

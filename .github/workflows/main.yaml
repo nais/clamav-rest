@@ -18,9 +18,9 @@ jobs:
     name: Build and push
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # ratchet:actions/checkout@v5
 
-      - uses: nais/platform-build-push-sign@main
+      - uses: nais/platform-build-push-sign@8be8359cd90915318ee8ab5fbc8337d04937ae70 # ratchet:nais/platform-build-push-sign@main
         id: build-push-sign
         with:
           name: ${{ env.NAME }}
@@ -28,13 +28,13 @@ jobs:
           push: ${{ github.actor != 'dependabot[bot]' && github.ref == 'refs/heads/main' }}
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # ratchet:azure/setup-helm@v4
         name: "Setup Helm"
         with:
           version: "v3.18.3"
 
       - name: Update values.yaml
-        uses: fjogeleit/yaml-update-action@main
+        uses: fjogeleit/yaml-update-action@04ff6ec06568fd21197db746472e36cc425de850 # ratchet:fjogeleit/yaml-update-action@main
         with:
           valueFile: 'charts/values.yaml'
           propertyPath: 'image.tag'
@@ -57,7 +57,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: nais/fasit-deploy@v2
+      - uses: nais/fasit-deploy@8727ed1c7a5a465e837873e6016a9a692a6b874a # ratchet:nais/fasit-deploy@v2
         with:
           chart: ${{ env.FEATURE_REPOSITORY }}/${{ env.NAME }}
           version: ${{ needs.build_and_push.outputs.version }}
