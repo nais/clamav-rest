@@ -105,3 +105,151 @@ func TestInStreamHandler(t *testing.T) {
 	}
 
 }
+
+func TestInStreamV2Handler(t *testing.T) {
+	logger := &zerolog.Logger{}               // Use a no-op logger for testing
+	maxRequestSize := int64(10 * 1024 * 1024) // 10 MB
+
+	tt := []struct {
+		name           string
+		expectedStatus int
+		expectedBody   string
+		fileContent    []byte
+		fileName       string
+		mockError      error
+		mockResponse   []byte
+		expectVirus    string
+		expectError    string
+	}{
+		{
+			name:           "file size exceeds limit",
+			expectedBody:   "file size exceeds limit",
+			expectedStatus: http.StatusRequestEntityTooLarge,
+			fileContent:    make([]byte, maxRequestSize+1),
+			fileName:       "test.txt",
+			mockError:      nil,
+			mockResponse:   nil,
+			expectVirus:    "",
+			expectError:    "",
+		},
+		{
+			name:           "successful file scan - no virus",
+			expectedBody:   `"result":"OK"`,
+			expectedStatus: http.StatusOK,
+			fileContent:    []byte("test content"),
+			fileName:       "test 1.txt",
+			mockError:      nil,
+			mockResponse:   []byte("stream: OK\n"),
+			expectVirus:    "",
+			expectError:    "",
+		},
+		{
+			name:           "scan failure error",
+			expectedBody:   `"result":"ERROR"`,
+			expectedStatus: http.StatusOK,
+			fileContent:    []byte("test content"),
+			fileName:       "test.txt",
+			mockError:      assert.AnError,
+			mockResponse:   nil,
+			expectVirus:    "",
+			expectError:    "Scan failure",
+		},
+		{
+			name:           "virus found in file",
+			expectedBody:   `"result":"FOUND"`,
+			expectedStatus: http.StatusOK,
+			fileContent:    []byte("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"),
+			fileName:       "eicar.com",
+			mockError:      nil,
+			mockResponse:   []byte("stream: EICAR-TEST-STRING FOUND\n"),
+			expectVirus:    "EICAR-TEST-STRING",
+			expectError:    "",
+		},
+		{
+			name:           "empty file upload returns empty array",
+			expectedBody:   "[]",
+			expectedStatus: http.StatusOK,
+			fileContent:    []byte(""),
+			fileName:       "",
+			mockError:      nil,
+			mockResponse:   nil,
+			expectVirus:    "",
+			expectError:    "",
+		},
+		{
+			name:           "unknown command error",
+			expectedBody:   `"error":"Unknown command"`,
+			expectedStatus: http.StatusOK,
+			fileContent:    []byte("test content"),
+			fileName:       "test.txt",
+			mockError:      nil,
+			mockResponse:   []byte("UNKNOWN COMMAND\n"),
+			expectVirus:    "",
+			expectError:    "Unknown command",
+		},
+		{
+			name:           "unsupported command error",
+			expectedBody:   `"error":"Unsupported command"`,
+			expectedStatus: http.StatusOK,
+			fileContent:    []byte("test content"),
+			fileName:       "test.txt",
+			mockError:      nil,
+			mockResponse:   []byte("UNSUPPORTED\n"),
+			expectVirus:    "",
+			expectError:    "Unsupported command",
+		},
+		{
+			name:           "invalid response error",
+			expectedBody:   `"error":"Invalid response"`,
+			expectedStatus: http.StatusOK,
+			fileContent:    []byte("test content"),
+			fileName:       "test.txt",
+			mockError:      nil,
+			mockResponse:   []byte(""),
+			expectVirus:    "",
+			expectError:    "Invalid response",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			mockClamav := new(MockClamav)
+			handler := NewHandler(logger, mockClamav)
+
+			if tc.mockError != nil || tc.mockResponse != nil {
+				mockClamav.On("InStream", mock.Anything, mock.Anything, mock.Anything).Return(tc.mockResponse, tc.mockError)
+			}
+
+			body := &bytes.Buffer{}
+			writer := multipart.NewWriter(body)
+
+			if tc.fileName != "" {
+				part, err := writer.CreateFormFile("file", tc.fileName)
+				assert.NoError(t, err)
+				part.Write(tc.fileContent)
+			}
+
+			writer.Close()
+
+			req := httptest.NewRequest(http.MethodPost, "/api/v2/scan", body)
+			req.Header.Set("Content-Type", writer.FormDataContentType())
+
+			rr := httptest.NewRecorder()
+			h := handler.InStreamV2(maxRequestSize)
+			h(rr, req)
+
+			assert.Equal(t, tc.expectedStatus, rr.Code)
+			assert.Contains(t, rr.Body.String(), tc.expectedBody)
+
+			if tc.expectVirus != "" {
+				assert.Contains(t, rr.Body.String(), tc.expectVirus)
+			}
+
+			if tc.expectError != "" {
+				assert.Contains(t, rr.Body.String(), tc.expectError)
+			}
+
+			mockClamav.AssertExpectations(t)
+		})
+	}
+}

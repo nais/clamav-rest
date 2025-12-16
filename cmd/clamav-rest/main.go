@@ -49,6 +49,10 @@ func main() {
 	r.Post("/scan", h.InStream(cfg.ServerMaxRequestSize))
 	r.Put("/scan", h.InStream(cfg.ServerMaxRequestSize))
 	r.Handle("/metrics", promhttp.Handler())
+	r.Route("/api/v2", func(r chi.Router) {
+		r.Post("/scan", h.InStreamV2(cfg.ServerMaxRequestSize))
+		r.Put("/scan", h.InStreamV2(cfg.ServerMaxRequestSize))
+	})
 
 	sContext, sCancel := context.WithCancel(ctx)
 	s := &http.Server{
