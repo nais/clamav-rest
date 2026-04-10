@@ -5,6 +5,7 @@ import (
 	"clamav-rest/internal/clamav"
 	"clamav-rest/internal/metrics"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -22,7 +23,7 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		case r.Method == http.MethodPut:
 			files, err = readRequestBody(r)
 		case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
-			files, err = readMultipartForm(r, maxFileSize)
+			files, err = readMultipartForm(w, r, maxFileSize)
 		default:
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
 			http.Error(w, "unsupported method or content type", http.StatusBadRequest)
@@ -30,6 +31,10 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		}
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
+			if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+				http.Error(w, "file size exceeds limit", http.StatusRequestEntityTooLarge)
+				return
+			}
 			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -98,7 +103,7 @@ func (h *Handler) InStreamV2(maxFileSize int64) func(w http.ResponseWriter, r *h
 		case r.Method == http.MethodPut:
 			files, err = readRequestBody(r)
 		case r.Method == http.MethodPost && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
-			files, err = readMultipartForm(r, maxFileSize)
+			files, err = readMultipartForm(w, r, maxFileSize)
 		default:
 			metrics.RequestErrors.WithLabelValues(r.Method, "/api/v2/scan").Inc()
 			http.Error(w, "unsupported method or content type", http.StatusBadRequest)
@@ -106,6 +111,10 @@ func (h *Handler) InStreamV2(maxFileSize int64) func(w http.ResponseWriter, r *h
 		}
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/api/v2/scan").Inc()
+			if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+				http.Error(w, "file size exceeds limit", http.StatusRequestEntityTooLarge)
+				return
+			}
 			http.Error(w, "failed to read upload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -202,8 +211,9 @@ func readRequestBody(r *http.Request) (map[string][]byte, error) {
 	return requestMap, nil
 }
 
-func readMultipartForm(r *http.Request, maxFileSize int64) (map[string][]byte, error) {
-	if err := r.ParseMultipartForm(maxFileSize); err != nil {
+func readMultipartForm(w http.ResponseWriter, r *http.Request, maxFileSize int64) (map[string][]byte, error) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxFileSize)
+	if err := r.ParseMultipartForm(maxFileSize); err != nil { // #nosec G120 -- body is already wrapped with MaxBytesReader above
 		return nil, err
 	}
 
