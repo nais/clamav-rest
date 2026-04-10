@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # ratchet:actions/checkout@v5
 
-      - uses: nais/platform-build-push-sign@8be8359cd90915318ee8ab5fbc8337d04937ae70 # ratchet:nais/platform-build-push-sign@main
+      - uses: nais/platform-build-push-sign@df590279b21bc5978519685752f9eaddd546043c # ratchet:nais/platform-build-push-sign@main
         id: build-push-sign
         with:
           name: ${{ env.NAME }}
