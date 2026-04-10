@@ -1,2 +1,27 @@
 [tools]
-go = "1.26.2"
+go = "1.25.9"
+
+[tasks.build]
+depends = ["check", "test"]
+run = "go build -o clamav-rest cmd/clamav-rest/*.go"
+
+[tasks.check]
+depends = ["staticcheck", "vulncheck", "deadcode", "gosec", "vet"]
+
+[tasks.staticcheck]
+run = "go tool honnef.co/go/tools/cmd/staticcheck ./..."
+
+[tasks.vulncheck]
+run = "go tool golang.org/x/vuln/cmd/govulncheck ./..."
+
+[tasks.deadcode]
+run = "go tool golang.org/x/tools/cmd/deadcode -test ./..."
+
+[tasks.gosec]
+run = "go tool github.com/securego/gosec/v2/cmd/gosec --exclude-generated -terse ./..."
+
+[tasks.vet]
+run = "go vet ./..."
+
+[tasks.test]
+run = "go test ./..."

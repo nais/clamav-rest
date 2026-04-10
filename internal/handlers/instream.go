@@ -31,7 +31,8 @@ func (h *Handler) InStream(maxFileSize int64) func(w http.ResponseWriter, r *htt
 		}
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/scan").Inc()
-			if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
 				http.Error(w, "file size exceeds limit", http.StatusRequestEntityTooLarge)
 				return
 			}
@@ -111,7 +112,8 @@ func (h *Handler) InStreamV2(maxFileSize int64) func(w http.ResponseWriter, r *h
 		}
 		if err != nil {
 			metrics.RequestErrors.WithLabelValues(r.Method, "/api/v2/scan").Inc()
-			if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
 				http.Error(w, "file size exceeds limit", http.StatusRequestEntityTooLarge)
 				return
 			}

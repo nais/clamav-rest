@@ -1,6 +1,6 @@
 module clamav-rest
 
-go 1.26.2
+go 1.25.9
 
 tool (
 	github.com/securego/gosec/v2/cmd/gosec
