@@ -26,9 +26,9 @@ func LoadConfig() (*Config, error) {
 	cfg.LogLevel = "info"
 	cfg.Timeout = 3 * time.Second
 	cfg.Keepalive = 3 * time.Second
-	cfg.ServerReadTimeout = 30 * time.Second
+	cfg.ServerReadTimeout = 120 * time.Second
 	cfg.ServerReadHeaderTimeout = 10 * time.Second
-	cfg.ServerWriteTimeout = 30 * time.Second
+	cfg.ServerWriteTimeout = 120 * time.Second
 	cfg.ServerMaxRequestSize = int64(400 * 1024 * 1024)
 
 	if val, ok := os.LookupEnv("DAEMON_ENDPOINT"); ok {
