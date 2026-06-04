@@ -85,8 +85,8 @@ func TestV1vsV2Comparison(t *testing.T) {
 		h2(rr2, req2)
 
 		// Parse responses
-		var v1Response []map[string]interface{}
-		var v2Response []map[string]interface{}
+		var v1Response []map[string]any
+		var v2Response []map[string]any
 
 		err1 := json.Unmarshal(rr1.Body.Bytes(), &v1Response)
 		err2 := json.Unmarshal(rr2.Body.Bytes(), &v2Response)
@@ -164,7 +164,7 @@ func TestV1vsV2Comparison(t *testing.T) {
 		// V2 returns 200 with error field populated
 		assert.Equal(t, http.StatusOK, rr2.Code)
 
-		var v2Response []map[string]interface{}
+		var v2Response []map[string]any
 		json.Unmarshal(rr2.Body.Bytes(), &v2Response)
 
 		assert.Len(t, v2Response, 1)

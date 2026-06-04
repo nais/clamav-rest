@@ -94,7 +94,7 @@ When a scan error occurs:
 
 ### Prerequisites
 
-- Go 1.25 or later
+- Go 1.26 or later
 - ClamAV daemon installed and running
 - Make 
 
