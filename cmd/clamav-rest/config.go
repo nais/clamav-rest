@@ -71,9 +71,7 @@ func parseByteSize(value string) (int64, error) {
 	if normalized == "" {
 		return 0, errors.New("value cannot be empty")
 	}
-	if strings.HasSuffix(normalized, "B") {
-		normalized = strings.TrimSuffix(normalized, "B")
-	}
+	normalized = strings.TrimSuffix(normalized, "B")
 
 	multiplier := int64(1)
 	for _, unit := range []struct {
