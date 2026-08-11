@@ -29,6 +29,8 @@ spec:
           env:
           - name: DAEMON_ENDPOINT
             value: clamav-daemon:3310
+          - name: MAX_FILE_SIZE
+            value: {{ .Values.maxFileSize | quote }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           livenessProbe:

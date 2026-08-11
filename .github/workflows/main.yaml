@@ -83,8 +83,9 @@ jobs:
           targets: |
             [
               { "target": { "kind": "tenant", "tenant": "nav", "environment": "dev" }, "wait": true },
-              { "target": { "kind": "tenant", "tenant": "nav" } },
+              { "target": { "kind": "tenant", "tenant": "nav"  } },
               { "target": { "kind": "tenant", "tenant": "ldir" } },
               { "target": { "kind": "tenant", "tenant": "atil" } },
-              { "target": { "kind": "onprem" } }
+              { "target": { "kind": "onprem", "tenant": "nav", "environment": "dev-fss" }, "wait": true },
+              { "target": { "kind": "onprem", "tenant": "nav", "environment": "prod-fss" } }
             ]

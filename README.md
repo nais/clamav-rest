@@ -111,7 +111,7 @@ make build
 - `-log-level` - Log level (default: `info`)
 - `-timeout` - Client connection timeout in seconds (default: `3`)
 - `-keepalive` - Client connection keepalive (default: `3`)
-- 
+- `-max-file-size` - Max upload size accepted by scan endpoints (default: `400Mi`, accepts units like `Mi`, `M`, `Gi`)
 ### Test
 
 ```bash
