@@ -86,6 +86,7 @@ jobs:
               { "target": { "kind": "tenant", "tenant": "nav"  } },
               { "target": { "kind": "tenant", "tenant": "ldir" } },
               { "target": { "kind": "tenant", "tenant": "atil" } },
+              { "target": { "kind": "tenant", "tenant": "ssb" } },
               { "target": { "kind": "onprem", "tenant": "nav", "environment": "dev-fss" }, "wait": true },
               { "target": { "kind": "onprem", "tenant": "nav", "environment": "prod-fss" } }
             ]
