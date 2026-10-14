@@ -15,9 +15,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # ratchet:actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7
 
-      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # ratchet:jdx/mise-action@v4
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # ratchet:jdx/mise-action@v4
 
       - name: Check
         run: mise run check
@@ -36,9 +36,9 @@ jobs:
     name: Build and push
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # ratchet:actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7
 
-      - uses: nais/platform-build-push-sign@df590279b21bc5978519685752f9eaddd546043c # ratchet:nais/platform-build-push-sign@main
+      - uses: nais/platform-build-push-sign@07a21e2293624a78499c79eeea3ce6d314f8a8d9 # ratchet:nais/platform-build-push-sign@main
         id: build-push-sign
         with:
           name: ${{ env.NAME }}
@@ -49,10 +49,10 @@ jobs:
       - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # ratchet:azure/setup-helm@v4
         name: "Setup Helm"
         with:
-          version: "v3.18.3"
+          version: "v3.21.4"
 
       - name: Update values.yaml
-        uses: fjogeleit/yaml-update-action@04ff6ec06568fd21197db746472e36cc425de850 # ratchet:fjogeleit/yaml-update-action@main
+        uses: fjogeleit/yaml-update-action@dffe9a5223d84653c13374032382f6bb5de8e5ef # ratchet:fjogeleit/yaml-update-action@main
         with:
           valueFile: 'charts/values.yaml'
           propertyPath: 'image.tag'
@@ -76,7 +76,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: nais/fasit-deploy@9f870e05e92cde6cfd827b13384ec09e80be65fd # ratchet:nais/fasit-deploy@v4
+      - uses: nais/fasit-deploy@53e433b1bdd08fc622e03a78584c0832c9083bd3 # ratchet:nais/fasit-deploy@v4
         with:
           chart: ${{ env.FEATURE_REPOSITORY }}/${{ env.NAME }}
           version: ${{ needs.build_and_push.outputs.version }}
