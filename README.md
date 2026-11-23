@@ -26,6 +26,17 @@ The v2 API returns additional fields:
 - `error` — Error message if scan failed (empty if successful)
 - Uses lowercase field names for consistency
 
+V2 returns HTTP **503 Service Unavailable** if any file fails to scan, including
+daemon connection failures and invalid or error responses. The JSON array still
+includes every file's result, including successful scans in the same request.
+If the daemon closes the connection without answering, V2 returns HTTP **503**
+with `"result":"ERROR"` and `"error":"Invalid response"`.
+Each V2 file scan sets a **90-second** deadline, which bounds the daemon response
+read. An earlier request deadline takes precedence. Read timeouts return HTTP
+**503** with `"result":"ERROR"` and `"error":"Scan failure"`.
+Completed scans return HTTP **200 OK**, including when a virus is found.
+V1 behavior and file handling are unchanged; no file retention or retries are added.
+
 Possible error values:
 - `"Invalid response"` — ClamAV returned an unexpected response
 - `"Scan failure"` — Failed to scan the file
@@ -78,7 +89,7 @@ When a virus is detected:
 ]
 ```
 
-When a scan error occurs:
+When a scan error occurs (HTTP **503 Service Unavailable**):
 ```json
 [
   {

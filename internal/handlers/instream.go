@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"clamav-rest/internal/clamav"
 	"clamav-rest/internal/metrics"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -129,11 +130,14 @@ func (h *Handler) InStreamV2(maxFileSize int64) func(w http.ResponseWriter, r *h
 
 		// Initialize with empty slice to ensure we return [] instead of null
 		responses := make([]StreamRespV2, 0, len(files))
+		status := http.StatusOK
 
 		for filename, buf := range files {
 			part := io.NopCloser(bytes.NewBuffer(buf))
 			start := time.Now()
-			inStream, err := h.Clamav.InStream(r.Context(), part, int64(len(buf)))
+			ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+			inStream, err := h.Clamav.InStream(ctx, part, int64(len(buf)))
+			cancel()
 
 			scanDuration := time.Since(start).Seconds()
 			metrics.ScanDuration.WithLabelValues(r.Method, "/api/v2/scan").Observe(scanDuration)
@@ -148,6 +152,7 @@ func (h *Handler) InStreamV2(maxFileSize int64) func(w http.ResponseWriter, r *h
 
 			// Check if there was a connection/scan error
 			if err != nil {
+				status = http.StatusServiceUnavailable
 				streamResp.Result = "ERROR"
 				streamResp.Error = clamav.ErrScanFailure
 				h.Logger.Error().Msgf("scan error for file %s: %v", filename, err)
@@ -160,9 +165,11 @@ func (h *Handler) InStreamV2(maxFileSize int64) func(w http.ResponseWriter, r *h
 
 			// Check for ClamAV error responses
 			if isErrorResponse(responseStr) {
+				status = http.StatusServiceUnavailable
 				streamResp.Result = "ERROR"
 				streamResp.Error = parseErrorType(responseStr)
 				h.Logger.Warn().Msgf("ClamAV error for file %s: %s (response: %s)", filename, streamResp.Error, responseStr)
+				metrics.RequestErrors.WithLabelValues(r.Method, "/api/v2/scan").Inc()
 				responses = append(responses, streamResp)
 				continue
 			}
@@ -187,7 +194,7 @@ func (h *Handler) InStreamV2(maxFileSize int64) func(w http.ResponseWriter, r *h
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(status)
 		if _, err := w.Write(resp); err != nil {
 			h.Logger.Error().Msgf("Error writing response: %v", err)
 			http.Error(w, "failed to write response: "+err.Error(), http.StatusInternalServerError)

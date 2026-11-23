@@ -142,7 +142,7 @@ func TestV1vsV2Comparison(t *testing.T) {
 		// V1 returns 500 on error
 		assert.Equal(t, http.StatusInternalServerError, rr1.Code)
 
-		// Test V2 - should return HTTP 200 with error in response
+		// Test V2 - should return HTTP 503 with error in response
 		mockClamav2 := new(MockClamav)
 		handler2 := handlers.NewHandler(logger, mockClamav2)
 		mockClamav2.On("InStream", mock.Anything, mock.Anything, mock.Anything).
@@ -161,8 +161,8 @@ func TestV1vsV2Comparison(t *testing.T) {
 		h2 := handler2.InStreamV2(maxRequestSize)
 		h2(rr2, req2)
 
-		// V2 returns 200 with error field populated
-		assert.Equal(t, http.StatusOK, rr2.Code)
+		// V2 returns 503 with error field populated
+		assert.Equal(t, http.StatusServiceUnavailable, rr2.Code)
 
 		var v2Response []map[string]any
 		json.Unmarshal(rr2.Body.Bytes(), &v2Response)

@@ -77,6 +77,7 @@ func (c *ClamClient) InStream(ctx context.Context, r io.Reader, size int64) ([]b
 	if err != nil {
 		return nil, fmt.Errorf("failed dialing %s/%s: %w", c.network, c.address, err)
 	}
+	defer conn.Close()
 
 	reader := bufio.NewReaderSize(r, 2048)
 	writer := bufio.NewWriter(conn)
@@ -105,6 +106,12 @@ func (c *ClamClient) InStream(ctx context.Context, r io.Reader, size int64) ([]b
 
 	if err := writer.Flush(); err != nil {
 		return nil, fmt.Errorf("failed flushing writer to %s: %w", c.address, err)
+	}
+
+	if deadline, ok := ctx.Deadline(); ok {
+		if err := conn.SetReadDeadline(deadline); err != nil {
+			return nil, fmt.Errorf("failed setting read deadline for %s: %w", c.address, err)
+		}
 	}
 
 	resp, err := c.readResponse(conn)
